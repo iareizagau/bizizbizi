@@ -1,0 +1,157 @@
+{% extends 'core/base.html' %}
+
+{% load static %}
+
+{% block title %}Krokisak  {% endblock %}
+
+{% block content %}
+
+{% if climbingspot.enable or request.user.username == 'admin' %}
+
+    <div class="container">
+    <div class="fixed-bottom">
+        <button class="btn primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasTop"
+                aria-controls="offcanvasTop">
+            <img src="http://openweathermap.org/img/wn/02d@2x.png"/>
+        </button>
+    </div>
+    <div class="offcanvas offcanvas-top" tabindex="-1" id="offcanvasTop" aria-labelledby="offcanvasTopLabel">
+        <div class="offcanvas-header" style='padding-bottom: 0'>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body" style='padding: 0'>
+            <div class="card-body" id="name" style='padding: 0'>
+                <p><strong> {{ climbingspot.town }}, </strong> {{ climbingspot.title }}</p>
+                <div id="demo3" class="carousel slide" data-ride="carousel">
+                    <!-- Carousel inner -->
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <div class="d-flex justify-content-around text-center mb-4" id="root">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <div class="container">
+        <br></br>
+        <div class="row">
+            <div class="col">
+                <div class="text-center">
+                    {% if climbingspot.image1 %}
+                        <a href="{{ climbingspot.image1.url }}">
+                            <img src="{{ climbingspot.image1.url }}" style='width:100%;' border="0" alt="{{ climbingspot.image1.url }}">
+                        </a>
+                    <br></br>
+                    {% endif %}
+                    {% if climbingspot.image2 %}
+                    <a href="{{ climbingspot.image2.url }}">
+                        <img src="{{ climbingspot.image2.url }}" style='width:100%;' border="0" alt="image 2">
+                    </a>
+                    <br></br>
+                    {% endif %}
+                    {% if climbingspot.image3 %}
+                    <a href="{{ climbingspot.image3.url }}">
+                        <img src="{{ climbingspot.image3.url }}" style='width:100%;' border="0" alt="image 3">
+                    </a>
+                    <br></br>
+                    {% endif %}
+                    {% if climbingspot.image4 %}
+                    <a href="{{ climbingspot.image4.url }}">
+                        <img src="{{ climbingspot.image4.url }}" style='width:100%;' border="0" alt="image 3">
+                    </a>
+                    <br></br>
+                    {% endif %}
+                    {% if climbingspot.image5 %}
+                    <a href="{{ climbingspot.image5.url }}">
+                        <img src="{{ climbingspot.image5.url }}" style='width:100%;' border="0" alt="image 3">
+                    </a>
+                    <br></br>
+                    {% endif %}
+                    {% if climbingspot.image6 %}
+                    <a href="{{ climbingspot.image6.url }}">
+                        <img src="{{ climbingspot.image6.url }}" style='width:100%;' border="0" alt="image 3">
+                    </a>
+                    <br></br>
+                    {% endif %}
+                    {% if climbingspot.image7 %}
+                    <a href="{{ climbingspot.image7.url }}">
+                        <img src="{{ climbingspot.image7.url }}" style='width:100%;' border="0" alt="image 3">
+                    </a>
+                    <br></br>
+                    {% endif %}
+                    {% if climbingspot.image8 %}
+                    <a href="{{ climbingspot.image8.url }}">
+                        <img src="{{ climbingspot.image8.url }}" style='width:100%;' border="0" alt="image 3">
+                    </a>
+                    <br></br>
+                    {% endif %}
+                    Jatorria:
+                        <a href="https://www.gmf.eus">
+                            {{ climbingspot.source }}
+                        </a>
+                </div>
+            </div>
+        </div>
+
+        <iframe
+    width="100%"
+    height="600"
+    frameborder="0"
+    scrolling="no"
+    marginheight="0"
+    marginwidth="0"
+    src="https://maps.google.com/maps?width=100&amp;height=600&amp;hl=es&amp;q={{ climbingspot.latitude }},{{ climbingspot.longitude }}&amp;t=&amp;z=14&amp;ie=UTF8&amp;iwloc=B&amp;output=embed">
+    </iframe>
+   </br>
+</div>
+{% else %}
+    <h3>Wait for the validation</h3>
+{% endif %}
+<script>
+    var weather = document.querySelector('.weather');
+    var temp = document.querySelector('.temp');
+    var wind = document.querySelector('.wind');
+    var icon = document.querySelector('.icon');
+    var datetime = document.querySelector('.datetime');
+    console.log("lat={{ ClimbingSpot.latitude }}&&lon={{ ClimbingSpot.longitude }}");
+    window.addEventListener('load', function(name){
+    fetch('https://api.openweathermap.org/data/2.5/onecall?lat={{ climbingspot.latitude }}&&lon={{ climbingspot.longitude }}&&exclude=current,hourly,minutely,alerts&units=metric&appid=32ce3717017406682b290a5dd99fbc99')
+    .then(response => response.json())
+    .then(data => {
+        console.log(data);
+        var days = ['Igandea','Astelehena','Asteartea','Asteazkena','Osteguna','Ostirala','larunbata'];
+        const root = document.getElementById('root');
+        var html = "";
+        for (var i=0;i<7;i++) {
+            var iconValue = data['daily'][i]['weather'][0]['icon'];
+            var img = "http://openweathermap.org/img/wn/"+iconValue+"@2x.png";
+            var temperatura = data['daily'][i]['temp']['day'];
+            temperatura = Math.round(temperatura);
+            console.log(temperatura);
+            var dateFromTimeStamp = new Date(data['daily'][i]['dt'] * 1000);
+            if (i < 3)
+            {
+                html += "<div class='flex-column'>"
+            }
+            else
+            {
+                html += "<div class='flex-column d-none d-sm-block'>"
+            }
+            html += "<p style='margin-bottom: 0'>" + temperatura + "&#8451</p>" +
+            "<img src="+img+"></img>" +
+            "<p style='margin-bottom: 0'>" + days[dateFromTimeStamp.getDay()] + "</p>" +
+            "</div>";
+        }
+        root.innerHTML = html;
+
+        })
+    })
+
+
+
+</script>
+{% endblock %}
+

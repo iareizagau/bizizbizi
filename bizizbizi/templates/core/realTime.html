@@ -1,0 +1,125 @@
+{% extends 'core/base.html' %}
+
+{% load static %}
+
+{% block title %}Hasiera{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+        integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+        crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+    <div class="container">
+        <div class="row">
+            <div style="width: 100vw">
+                <button type="button" class="btn btn-primary" onclick="startTracking()">Start/Continue</button>
+                <button type="button" class="btn btn-warning" onclick="pauseTracking()">Pause</button>
+                <button type="button" class="btn btn-danger" onclick="stopTracking()">Finish</button>
+            </div>
+        </div>
+        <div class="row">
+            <div id="map"></div>
+        </div>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+        integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+        crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script>
+        var map_init = L.map('map', {
+            center: [43.30372949231118, -1.9787817556451859],
+            zoom: 8
+        });
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map_init);
+        L.Control.geocoder().addTo(map_init);
+        var intervalId
+        function startTracking() {
+        if (!navigator.geolocation) {
+            console.log("Your browser doesn't support geolocation feature!")
+        } else {
+            // var options = {enableHighAccuracy: true,timeout: 5000,maximumAge: 0,desiredAccuracy: 0, frequency: 3000 };
+            //navigator.geolocation.watchPosition(mostrarCoordenada, onError, options);
+            intervalId = setInterval(() => {
+                navigator.geolocation.getCurrentPosition(getPosition)
+            }, 2000);
+        };
+        }
+
+        function pauseTracking() {
+            clearInterval(intervalId);
+        }
+        var marker, circle, lat, long, accuracy, speed, altitude, heading, altitudeAccuracy, timestamp;
+        var position_array = [];
+
+        function getPosition(position) {
+            lat = position.coords.latitude
+            long = position.coords.longitude
+            accuracy = position.coords.accuracy
+            speed = position.coords.speed
+            altitude = position.coords.altitude
+            heading = position.coords.heading
+            altitudeAccuracy = position.coords.altitudeAccuracy
+            timestamp_coord = position.coords.timestamp
+            if (marker) {
+                map_init.removeLayer(marker)
+            }
+
+            if (circle) {
+                map_init.removeLayer(circle)
+            }
+
+            marker = L.marker([lat, long])
+            circle = L.circle([lat, long], { radius: accuracy })
+
+            var featureGroup = L.featureGroup([marker, circle]).addTo(map_init)
+
+            map_init.fitBounds(featureGroup.getBounds());
+            position_array.push({latitude: lat, longitude: long, accuracy: accuracy,
+            speed: speed, altitude: altitude, altitudeAccuracy: altitudeAccuracy, heading:heading,
+            timestamp:timestamp_coord})
+            console.log("position_array", position_array);
+            console.log("Your coordinate is: Lat: " + lat + " Long: " + long + " Accuracy: " + accuracy);
+        }
+
+        function stopTracking(){
+            clearInterval(intervalId);
+            var date_now = new Date().toISOString();
+            //JSON.stringify
+            var data = {title: "testJS2",date_time: date_now, track_data: [position_array]}
+
+            console.log("fetch", data);
+            fetch('http://127.0.0.1:8000/api_post/', {
+              method: "POST",
+              body: JSON.stringify(data),
+              headers: {"Content-type": "application/json; application/javascript; text/plain; charset=utf-8",
+                        'Accept': 'application/json',
+                        "Accept-Encoding": "gzip, deflate, br"},
+            })
+            .then(response => response.json())
+            .then(json => console.log(json))
+            .catch(err => console.log(err));
+            position_array = []
+
+        }
+        function mostrarCoordenada(posicion) {
+           console.log("watch", posicion.coords.latitude, posicion.coords.longitude, posicion.coords.accuracy);
+           }
+    function onError(error) {
+      alert('code: '    + error.code    + '\n' +
+            'message: ' + error.message + '\n');
+    }
+    </script>
+{% endblock %}

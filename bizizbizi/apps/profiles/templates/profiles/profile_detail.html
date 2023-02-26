@@ -1,0 +1,158 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block title %}{{profile.user}}{% endblock %}
+{% block content %}
+<style>
+body {
+    padding: 5;
+    margin: 10;
+}
+html, body {
+    height: 60%;
+    width: 100vw;
+}
+#map {
+  position: relative;
+  border: 10px solid white;
+  border-radius: 25px;
+  height: 600px;  /* or as desired */
+  width: 100%;  /* This means "100% of the width of its container", the .col-md-8 */
+}
+</style>
+
+<main role="main">
+  <div class="container">
+    <div class="row mt-3">
+      <div class="col-md-9 mx-auto mb-5">
+        <form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+          <div class="row">
+            <!-- Avatar -->
+            <div class="col-md-2">
+              {% if profile.avatar %}
+                <img src="{{profile.avatar.url}}" class="img-fluid">
+              {% else %}
+                <img src="/media/default/no_perfil.png" class="img-fluid">
+              {% endif %}
+
+            </div>
+            <!-- Campos -->
+            <div class="col-md-10">
+              <h3>{{profile.user}}</h3>
+              {% if profile.bio %}<p>{{profile.bio}}</p>{% endif %}
+              {% if profile.link %}<p><a href="{{profile.link}}" target="_blank">{{profile.link}}</a></p>{% endif %}
+              {% if profile.mountain_club %}<p>{{profile.mountain_club}}</p>{% endif %}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="row">
+        <div id="map"></div>
+    </div>
+  </div>
+</main>
+<script type="text/javascript">
+    var latitude = 42.80964039169591
+    var longitude = -1.8157875336250309
+    var map = L.map('map').setView([latitude, longitude], 8);
+
+    /*==============================================
+      START LAYER CONTROL: Capas de diferentes mapas
+    ================================================*/
+    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
+    var dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+    });
+    googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    });
+    googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    });
+
+    /*==============================================
+                    LAYER CONTROL
+    ================================================*/
+    var baseMaps = {
+        "OSM": osm,
+        'Dark': dark,
+        'Google Street': googleStreets,
+        "Google Satellite": googleSat,
+    };
+
+    var tiles = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+        maxZoom: 18,
+        id: 'mapbox/streets-v11',
+        tileSize: 512,
+        zoomOffset: -1
+    }).addTo(map);
+
+    ////// Consumer
+    var LeafIconWeather = L.Icon.extend({
+        options: {
+            iconSize:     [50, 50],
+            iconAnchor:   [0, 0],
+            popupAnchor:  [-0, -0]
+        }
+    });
+
+    var markers = new L.markerClusterGroup();
+    var markersWeather = L.markerClusterGroup();
+    {% for spot in climbingspot %}
+      {% if spot.latitude and spot.longitude %}
+        window.addEventListener('load', function(name){
+            fetch('https://api.openweathermap.org/data/2.5/weather?lat={{ spot.latitude }}&&lon={{ spot.longitude }}&units=metric&appid=32ce3717017406682b290a5dd99fbc99&lang=eu')
+            .then(response => response.json())
+            .then(data => {
+            if (data['cod'] == 200){
+                icon_code = data['weather'][0]['icon'];
+                var img = "http://openweathermap.org/img/wn/"+ icon_code +"@2x.png"
+                {% for owm in owms %}
+                    icon_code = data['weather'][0]['icon'];
+                    if (hour > 21 || hour < 6){
+                        icon_code = icon_code.replace("d", "n");
+                    }
+                    if ("{{ owm.owm }}" == icon_code){
+                        img = "{{ owm.path }}";
+                    }
+                {% endfor %}
+                var weatherIcon = new LeafIconWeather({iconUrl: img});
+                markersWeather.addLayer(L.marker([{{ spot.latitude }},{{ spot.longitude }}], {icon: weatherIcon}));
+            }
+            })
+        })
+            markers.addLayer(L.marker([{{ spot.latitude }},{{ spot.longitude }}])
+                        .bindPopup("<a href={% url 'profiles:detail_spot' spot.id %}>{{ spot.title }}</a><br>" +
+                    "Arkaitza: {{ spot.stone }} <br>" +
+                    "Zailtasuna: {{ spot.difficulty }}"
+                    ));
+      {% endif %}
+    {% endfor %}
+
+    map.addLayer(markers);
+    map.addLayer(markersWeather);
+
+    var overlayMaps = {
+        "Eskalada guneak": markers,
+        "Eguraldia": markersWeather,
+    };
+
+    L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
+
+    L.control.locate({
+        flyTo: true,
+        keepCurrentZoomLevel: true,
+        initialZoomLevel: 10
+        }).addTo(map);
+    map.on('mouseover', function () {
+    console.log('your mouse is over the map')
+    })
+
+</script>
+{% endblock %}

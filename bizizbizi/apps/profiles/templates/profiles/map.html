@@ -1,0 +1,258 @@
+{% extends 'core/base.html' %}
+
+{% load static %}
+
+{% block title %}Hasiera{% endblock %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css" crossorigin="anonymous" />
+
+<style>
+    .marker-cluster-small {
+    background-color: rgba(50, 94, 244, 0.6);
+    }
+    .marker-cluster-small div {
+    background-color: rgba(50, 36, 242, 0.6);
+    }
+    .marker-cluster-medium {
+    background-color: rgba(241, 211, 87, 0.6);
+    }
+    .marker-cluster-medium div {
+    background-color: rgba(240, 194, 12, 0.6);
+    }
+
+    .marker-cluster-large {
+    background-color: rgba(253, 156, 115, 0.6);
+    }
+    .marker-cluster-large div {
+    background-color: rgba(241, 128, 23, 0.6);
+    }
+</style>
+<style>
+    body {
+        padding: 5;
+        margin: 0;
+    }
+    html, body, #map {
+        height: 92%;
+        width: 100vw;
+    }
+</style>
+<div id="map"></div>
+
+<script type="text/javascript">
+        var map = L.map('map').setView([42.80964039169591, -1.8157875336250309], 8);
+
+        var markers = L.markerClusterGroup({
+            iconCreateFunction: function(cluster) {
+                 var childCount = cluster.getChildCount();
+                 var c = ' marker-cluster-';
+                 if (childCount < 10) {
+                   c += 'small';
+                 }
+                 else if (childCount < 100) {
+                   c += 'small';
+                 }
+                 else {
+                   c += 'small';
+                 }
+                return new L.divIcon({ html: '<div><span>' + childCount + '</span></div>',
+                                        className: 'marker-cluster' + c, iconSize: new L.Point(40, 40)  });
+            }
+        });
+        var markersWeather = L.markerClusterGroup();
+
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+        osm.addTo(map);
+
+        var OpenTopoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        });
+
+        // water color
+        var watercolor = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/watercolor/{z}/{x}/{y}.{ext}', {
+            attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            subdomains: 'abcd',
+            minZoom: 1,
+            maxZoom: 16,
+            ext: 'jpg'
+        });
+
+        // dark map
+        var dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        });
+        // google street
+        googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+        });
+
+        //google satellite
+        googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+        });
+
+        /*==============================================
+                        LAYER CONTROL
+        ================================================*/
+        var baseMaps = {
+            "OSM": osm,
+            'Dark': dark,
+            'Google Street': googleStreets,
+            "Google Satellite": googleSat,
+            "Topo Map": OpenTopoMap,
+        };
+
+        var tiles = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+            maxZoom: 18,
+            id: 'mapbox/streets-v11',
+            tileSize: 512,
+            zoomOffset: -1
+        }).addTo(map);
+
+        const d = new Date();
+        let hour = d.getHours();
+        let icon_code = "";
+        var LeafIconWeather = L.Icon.extend({
+            options: {
+                iconSize:     [60, 60],
+                iconAnchor:   [20, 15],
+                popupAnchor:  [0, 0]
+            }
+        });
+
+        {% for spot in climbingspot %}
+            window.addEventListener('load', function(name){
+                fetch('https://api.openweathermap.org/data/2.5/weather?lat={{ spot.latitude }}&&lon={{ spot.longitude }}&units=metric&appid=32ce3717017406682b290a5dd99fbc99&lang=eu')
+                .then(response => response.json())
+                .then(data => {
+                if (data['cod'] == 200){
+                    icon_code = data['weather'][0]['icon'];
+                    var img = "http://openweathermap.org/img/wn/"+ icon_code +"@2x.png"
+                    {% for owm in owms %}
+                        icon_code = data['weather'][0]['icon'];
+                        if (hour > 21 || hour < 6){
+                            icon_code = icon_code.replace("d", "n");
+                        }
+                        if ("{{ owm.owm }}" == icon_code){
+                            img = "{{ owm.path }}";
+                        }
+                    {% endfor %}
+                    var weatherIcon = new LeafIconWeather({iconUrl: img});
+                    markersWeather.addLayer(L.marker([{{ spot.latitude }},{{ spot.longitude }}], {icon: weatherIcon}));
+                }
+                })
+            })
+
+                markers.addLayer(L.marker([{{ spot.latitude }},{{ spot.longitude }}])
+                            .bindPopup("<a href={% url 'profiles:detail_spot' spot.id %}>{{ spot.title }}</a><br>" +
+                        "Arkaitza: {{ spot.stone }} <br>" +
+                        "Zailtasuna: {{ spot.difficulty }}"
+                        ));
+        {% endfor %}
+
+        map.addLayer(markers);
+        map.addLayer(markersWeather);
+
+        var overlayMaps = {
+            "Eskalada guneak": markers,
+            "Eguraldia": markersWeather,
+        };
+
+        L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
+
+        L.control.locate({
+            flyTo: true,
+            keepCurrentZoomLevel: true,
+            initialZoomLevel: 10
+            }).addTo(map);
+
+        // create a red polygon from an array of LatLng points
+        var request = new XMLHttpRequest();
+        request.open("GET", "{% static 'core/data/euskadi_udalerriak.json' %}", false);
+        request.overrideMimeType("application/json");
+        request.send(null);
+        var jsonData = JSON.parse(request.responseText);
+
+
+        var euskadi = L.geoJSON(jsonData, {
+                    fillColor: 'blue',
+                    weight: 2,
+                    opacity: 0.2,
+                    color: 'white',  //Outline color
+                    fillOpacity: 0.2
+                    }); //.bindPopup('<p>Eskalatu Euskal Herrian!</p>');
+
+        euskadi.addTo(map);
+
+        request.open("GET", "{% static 'core/data/nafarroa_udalerriak.json' %}", false);
+        request.overrideMimeType("application/json");
+        request.send(null);
+        var jsonData = JSON.parse(request.responseText);
+
+
+        var nafarroa = L.geoJSON(jsonData, {
+                    fillColor: 'blue',
+                    weight: 2,
+                    opacity: 0.2,
+                    color: 'white',  //Outline color
+                    fillOpacity: 0.2
+                    }); //.bindPopup('<p>Eskalatu Euskal Herrian!</p>');
+
+        nafarroa.addTo(map);
+
+
+        // zoom the map to the polygon
+        //map.fitBounds(euskadi.getBounds());
+
+
+
+        map.on('mouseover', function ()
+        {
+            console.log('your mouse is over the map')
+        })
+    </script>
+<!--Jquery -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+<!-- Owl Carousel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
+<!-- custom JS code after importing jquery and owl -->
+<script type="text/javascript">
+ $(document).ready(function(){
+  $('.owl-carousel').owlCarousel({
+    loop:true,
+    margin:10,
+    nav:true,
+    autoplay: true,
+    center:true,
+    items: 1,
+    onInitialize: function (event) {
+        if ($('.owl-carousel .item').length <= 1) {
+           this.settings.loop = false;
+        }
+    },
+    responsive: {
+            0: {
+                items: 1
+            },
+            600: {
+                items: 2
+            },
+            1000: {
+                items: 3
+            }
+        },
+  })
+});
+</script>
+{% endblock %}
+
+

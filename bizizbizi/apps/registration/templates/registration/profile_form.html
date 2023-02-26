@@ -1,0 +1,171 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block title %}Profila{% endblock %}
+{% block content %}
+<style>.errorlist{color:red;} label{display:none}</style>
+<style>
+body {
+    padding: 5;
+    margin: 10;
+}
+html, body {
+    height: 60%;
+    width: 100vw;
+}
+#map {
+  position: relative;
+  border: 10px solid white;
+  border-radius: 25px;
+  height: 600px;  /* or as desired */
+  width: 100%;  /* This means "100% of the width of its container", the .col-md-8 */
+}
+</style>
+<main role="main">
+  <div class="container">
+    <div class="row mt-3">
+      <div class="col-md-9 mx-auto mb-5">
+        <form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+          <div class="row">
+            <!-- Previa del avatar -->
+            <div class="col-md-2">
+              {% if request.user.profile.avatar %}
+                <img src="{{request.user.profile.avatar.url}}" class="img-fluid">
+                <p class="mt-1">Borratu? <input type="checkbox" id="avatar-clear" name="avatar-clear" /></p>
+              {% else %}
+                <img src="/media/default/no_perfil.png" class="img-fluid">
+              {% endif %}
+            </div>
+            <!-- Formulario -->
+            <div class="col-md-10">
+              <h3>Profila: {{profile.user|truncatechars:"16"}}</h3>
+              <p class="profile-data">
+                <a href="{% url 'profiles:create_new' %}">Sortu eskalada gune berria</a>
+              </p>
+              <input type="file" name="avatar" class="form-control-file mt-3" id="id_avatar">
+              {{ form.bio }}
+              {{ form.link }}
+              {{ form.mountain_club }}
+              <p>Profil publikoa? {{ form.public }}</p>
+              <input type="email" value="{{request.user.email}}" class="form-control mt-3" readonly>
+              <p class="mt-3">
+                Emaila editatzeko egin klik <a href="{% url 'profile_email' %}">hemen</a>.<br>
+                Pasahitza aldatzeko egin klik <a href="{% url 'password_change' %}">hemen</a>.
+              </p>
+              <input type="submit" class="btn btn-primary btn-block mt-3" value="Eguneratu">
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="row mt-3">
+      <div id="map"></div>
+    </div>
+  </div>
+</main>
+<script type="text/javascript">
+
+    var latitude = 42.80964039169591
+    var longitude = -1.8157875336250309
+    var map = L.map('map').setView([latitude, longitude], 8);
+
+    /*==============================================
+      START LAYER CONTROL: Capas de diferentes mapas
+    ================================================*/
+    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
+    var dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+    });
+    googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    });
+    googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    });
+
+    /*==============================================
+                    LAYER CONTROL
+    ================================================*/
+    var baseMaps = {
+        "OSM": osm,
+        'Dark': dark,
+        'Google Street': googleStreets,
+        "Google Satellite": googleSat,
+    };
+
+    var tiles = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+        maxZoom: 18,
+        id: 'mapbox/streets-v11',
+        tileSize: 512,
+        zoomOffset: -1
+    }).addTo(map);
+
+    ////// Consumer
+    var LeafIconWeather = L.Icon.extend({
+        options: {
+            iconSize:     [50, 50],
+            iconAnchor:   [0, 0],
+            popupAnchor:  [-0, -0]
+        }
+    });
+
+    var markers = new L.markerClusterGroup();
+    var markersWeather = L.markerClusterGroup();
+    {% for spot in climbingspot %}
+      {% if spot.latitude and spot.longitude %}
+        window.addEventListener('load', function(name){
+            fetch('https://api.openweathermap.org/data/2.5/weather?lat={{ spot.latitude }}&&lon={{ spot.longitude }}&units=metric&appid=32ce3717017406682b290a5dd99fbc99&lang=eu')
+            .then(response => response.json())
+            .then(data => {
+            if (data['cod'] == 200){
+                icon_code = data['weather'][0]['icon'];
+                var img = "http://openweathermap.org/img/wn/"+ icon_code +"@2x.png"
+                {% for owm in owms %}
+                    icon_code = data['weather'][0]['icon'];
+                    if (hour > 21 || hour < 6){
+                        icon_code = icon_code.replace("d", "n");
+                    }
+                    if ("{{ owm.owm }}" == icon_code){
+                        img = "{{ owm.path }}";
+                    }
+                {% endfor %}
+                var weatherIcon = new LeafIconWeather({iconUrl: img});
+                markersWeather.addLayer(L.marker([{{ spot.latitude }},{{ spot.longitude }}], {icon: weatherIcon}));
+            }
+            })
+        })
+            markers.addLayer(L.marker([{{ spot.latitude }},{{ spot.longitude }}])
+                        .bindPopup("<a href={% url 'profiles:edit_spot' spot.id %}>{{ spot.title }}</a><br>" +
+                    "Arkaitza: {{ spot.stone }} <br>" +
+                    "Zailtasuna: {{ spot.difficulty }}"
+                    ));
+      {% endif %}
+    {% endfor %}
+
+    map.addLayer(markers);
+    map.addLayer(markersWeather);
+
+    var overlayMaps = {
+        "Eskalada guneak": markers,
+        "Eguraldia": markersWeather,
+    };
+
+    L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
+
+    L.control.locate({
+        flyTo: true,
+        keepCurrentZoomLevel: true,
+        initialZoomLevel: 10
+        }).addTo(map);
+    map.on('mouseover', function () {
+    console.log('your mouse is over the map')
+    })
+
+</script>
+
+{% endblock %}

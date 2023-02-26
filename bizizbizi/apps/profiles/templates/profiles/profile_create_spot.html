@@ -1,0 +1,202 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block title %}{{ request.user }}{% endblock %}
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<!-- Load Esri Leaflet from CDN -->
+<script src="https://unpkg.com/esri-leaflet@^3.0.8/dist/esri-leaflet.js"></script>
+<!-- Load Esri Leaflet Geocoder from CDN -->
+<link rel="stylesheet" href="https://unpkg.com/esri-leaflet-geocoder@3.1.3/dist/esri-leaflet-geocoder.css" crossorigin="" />
+<script src="https://unpkg.com/esri-leaflet-geocoder@3.1.3/dist/esri-leaflet-geocoder.js" crossorigin=""></script>
+<!--leaflet-routing-machine-->
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.7/dist/leaflet-routing-machine.js"></script>
+<style>
+    body {
+        padding: 5;
+        margin: 10;
+    }
+    html, body {
+        height: 60%;
+        width: 100vw;
+    }
+    #map {
+      margin-top: 5vh;
+      position: relative;
+      border: 10px solid white;
+      border-radius: 25px;
+      height: 600px;  /* or as desired */
+      width: 100%;  /* This means "100% of the width of its container", the .col-md-8 */
+    }
+</style>
+<style>
+body {
+    padding: 5;
+    margin: 10;
+}
+html, body {
+    height: 60%;
+    width: 100vw;
+}
+#map {
+  margin-top: 5vh;
+  position: relative;
+  border: 10px solid white;
+  border-radius: 25px;
+  height: 600px;  /* or as desired */
+  width: 100%;  /* This means "100% of the width of its container", the .col-md-8 */
+}
+</style>
+<main role="main">
+    <div class="container-fluid px-4">
+        <div class="row" class="align-middle">
+            <div class="col-xl-6 mx-auto">
+                <div id="map" class="align-middle"></div>
+            </div>
+            <div class="col-xl-6 mx-auto">
+                <div class="bg-faded rounded p-5">
+                    <form method="post" enctype="multipart/form-data" >{% csrf_token %}
+                        <input type="submit" class="btn btn-primary" value="Gorde" accept=".png, .jpg">
+                        {{ form.as_p }}
+                        <input type="submit" class="btn btn-primary" value="Gorde" accept=".png, .jpg">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+
+<script type="text/javascript">
+
+    var latitude = {{ map.longitude }}
+    var longitude = {{ map.latitude }}
+    const apiKey = "{{ api.esri }}";
+    var map = L.map('map', {zoomControl: false});
+    L.control.zoom({
+        position: 'bottomright'
+    }).addTo(map);
+    var lc = L.control.locate({
+        flyTo: true,
+        keepCurrentZoomLevel: true,
+        initialZoomLevel: 10,
+        position: 'bottomright'
+        }).addTo(map);
+
+    map.locate({setView: true,  watch: true})
+        .on('locationfound', function(e){
+                    map.setView([e.latitude, e.longitude], 12);
+                    var marker = L.marker([e.latitude, e.longitude]).bindPopup('Your are here :)');
+                    map.addLayer(marker);
+                })
+        .on('locationerror', function(e){
+            console.log(e);
+            alert("Location access has been denied.");
+        });
+
+    var greenIcon = new L.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+    var redIcon = new L.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+
+    var tiles = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+        maxZoom: 18,
+        id: 'mapbox/streets-v11',
+        tileSize: 512,
+        zoomOffset: -1
+    }).addTo(map);
+
+    var marker_start = new L.markerClusterGroup();
+    var marker_end = new L.markerClusterGroup();
+    var start_long = 0;
+    var start_lat = 0;
+    var end_long = 0;
+    var end_lat = 0;
+    var n_click = 0;
+    var line;
+    map.on('click', function (e) {
+        n_click += 1;
+        var location = e.latlng;
+        var clickLatLng = new L.LatLng(location['lat'], location['lng']);
+        console.log("click", n_click, e.latlng["lat"], e.latlng["lng"], clickLatLng);
+        if (marker_start && n_click > 2) {
+            console.log("DELETE marker_start");
+            map.removeLayer(marker_start);
+            marker_start = new L.markerClusterGroup();
+        }
+        if (marker_end && n_click > 2) {
+            console.log("DELETE marker_end");
+            map.removeLayer(marker_end);
+            marker_end = new L.markerClusterGroup();
+            n_click = 1;
+            console.log("DELETE line");
+            map.removeLayer(line);
+        }
+
+        if (n_click == 1)
+        {
+            marker_start.addLayer(L.marker([e.latlng["lat"], e.latlng["lng"]], {icon: greenIcon}));
+            map.addLayer(marker_start);
+            start_long = e.latlng["lng"];
+            start_lat = e.latlng["lat"];
+        }
+        if (n_click == 2)
+        {
+            marker_end.addLayer(L.marker([e.latlng["lat"], e.latlng["lng"]], {icon: redIcon}));
+            map.addLayer(marker_end);
+            end_long = e.latlng["lng"];
+            end_lat = e.latlng["lat"];
+
+            var router = L.routing.osrmv1({profile: "bike"});
+            console.log("print line", start_long, start_lat, end_long, end_lat);
+            var waypoints = [];
+            waypoints.push(L.routing.waypoint([start_lat,start_long]));
+            waypoints.push(L.routing.waypoint([end_lat, end_long]));
+            router.route(waypoints, function(err, routes) {
+                if (err || routes.length < 1) {
+                    return console.error(err)
+                }
+                console.log('Distance: ' + routes[0].summary.totalDistance/1000 + ' km');
+                console.log('summary: ' + routes[0].summary);
+                console.log('routes: ', routes);
+                line = L.routing.line(routes[0],{styles:[{color: 'green', opacity: 1, weight: 5}]}).addTo(map)
+            })
+        }
+        L.esri.Geocoding
+          .reverseGeocode({
+            apikey: apiKey
+          })
+          .latlng(e.latlng)
+          .language("eu")
+          .run(function (error, result) {
+            if (error) {
+              return;
+            }
+            if (n_click == 1)
+            {
+                console.log("start", result);
+            }
+            if (n_click == 2)
+            {
+                console.log("end", result);
+            }
+            });
+    });
+
+
+</script>
+
+{% endblock %}
+
+

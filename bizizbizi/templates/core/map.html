@@ -1,0 +1,273 @@
+{% extends 'core/base.html' %}
+
+{% load static %}
+
+{% block title %}Hasiera{% endblock %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+
+<style>
+    .marker-cluster-small {
+    background-color: rgba(50, 94, 244, 0.6);
+    }
+    .marker-cluster-small div {
+    background-color: rgba(50, 36, 242, 0.6);
+    }
+    .marker-cluster-medium {
+    background-color: rgba(241, 211, 87, 0.6);
+    }
+    .marker-cluster-medium div {
+    background-color: rgba(240, 194, 12, 0.6);
+    }
+
+    .marker-cluster-large {
+    background-color: rgba(253, 156, 115, 0.6);
+    }
+    .marker-cluster-large div {
+    background-color: rgba(241, 128, 23, 0.6);
+    }
+
+</style>
+<style>
+    body {
+        padding: 5;
+        margin: 0;
+    }
+    html, body, #map {
+        height: 92%;
+        width: 100vw;
+    }
+
+</style>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.7/dist/leaflet-routing-machine.js"></script>
+<script type="text/javascript">
+        var map = L.map('map');
+
+        var ocm = L.tileLayer('https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=cd56115c8eca4973aa4117461a378787', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        var OpenTopoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        });
+
+        // water color
+        var watercolor = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/watercolor/{z}/{x}/{y}.{ext}', {
+            attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            subdomains: 'abcd',
+            minZoom: 1,
+            maxZoom: 16,
+            ext: 'jpg'
+        });
+
+        // dark map
+        var dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        });
+        // google street
+        googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+        });
+
+        //google satellite
+        googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+        });
+
+        var OpenTopoMap = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        });
+
+
+        /*==============================================
+                        LAYER CONTROL
+        ================================================*/
+        var baseMaps = {
+            "OpenCycleMap": ocm,
+            "OSM": osm,
+            'Dark': dark,
+            'Google Street': googleStreets,
+            "Google Satellite": googleSat,
+            "Topo Map": OpenTopoMap,
+        };
+
+        var tiles = L.tileLayer('https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=cd56115c8eca4973aa4117461a378787').addTo(map);
+
+var startIcon = L.icon({
+    iconUrl: 'media/img/icon/start_flag.png',
+    iconSize: [70, 70]
+})
+
+var bikeIcon = L.icon({
+    iconUrl: 'media/img/icon/bike.png',
+    iconSize: [70, 70]
+})
+
+var LeafIconWeather = L.Icon.extend({
+    options: {
+        iconSize:     [100, 100],
+        iconAnchor:   [10, 0],
+        popupAnchor:  [-0, -0]
+    }
+});
+    var markers = L.markerClusterGroup({
+        disableClusteringAtZoom: 5,
+        maxClusterRadius: 10000,
+        animateAddingMarkers: true
+    });
+
+
+    {% for spot in bikespot %}
+        {% if forloop.first %}
+            markers.addLayer(L.marker([{{ spot.start_latitude }},{{ spot.start_longitude }}], { icon: startIcon }).addTo(map).bindPopup("<a href={% url 'core:detail_spot' spot.id %}>{{ spot.title }}</a><br>"));
+        {% endif %}
+        {% if forloop.last %}
+            markers.addLayer(L.marker([{{ spot.end_latitude }},{{ spot.end_longitude }}], { icon: bikeIcon }).addTo(map).bindPopup("<a href={% url 'core:detail_spot' spot.id %}>{{ spot.title }}</a><br>"));
+            map.setView([{{ spot.end_latitude }},{{ spot.end_longitude }}], 8);
+
+        {% else %}
+            {% if spot.mid_latitude != None %}
+                //markers.addLayer(L.marker([{{ spot.mid_latitude }},{{ spot.mid_longitude }}]).addTo(map));
+            {% endif %}
+            //markers.addLayer(L.marker([{{ spot.start_latitude }},{{ spot.start_longitude }}]).addTo(map));
+            markers.addLayer(L.marker([{{ spot.end_latitude }},{{ spot.end_longitude }}]).addTo(map).bindPopup("<a href={% url 'core:detail_spot' spot.id %}>{{ spot.title }}</a><br>"));
+        {% endif %}
+        console.log("order {{ spot.order }}");
+        var router = L.routing.osrmv1({profile: "bike"})
+
+        var waypoints = [];
+        waypoints.push(L.routing.waypoint([{{ spot.start_latitude }},{{ spot.start_longitude }}]));
+        {% if spot.mid_latitude != None %}
+            waypoints.push(L.routing.waypoint([{{ spot.mid_latitude }},{{ spot.mid_longitude }}]));
+        {% endif %}
+        waypoints.push(L.routing.waypoint([{{ spot.end_latitude }},{{ spot.end_longitude }}]));
+
+        router.route(waypoints, function(err, routes) {
+                                  if (err || routes.length < 1) {
+                                    return console.error(err)
+                                  }
+
+          var line = L.routing.line(routes[0],{styles:[{color: 'orange', opacity: 1, weight: 5}]}).addTo(map)
+           //map.fitBounds(line.getBounds())
+        })
+    {% endfor %}
+
+
+
+        var markersWeather = L.markerClusterGroup({
+        disableClusteringAtZoom: 10,
+        maxClusterRadius: 100,
+        animateAddingMarkers: true
+    });
+
+        {% for spot in bikespot %}
+            window.addEventListener('load', function(name){
+                fetch('https://api.openweathermap.org/data/2.5/weather?lat={{ spot.start_latitude }}&&lon={{ spot.start_longitude }}&units=metric&appid=32ce3717017406682b290a5dd99fbc99&lang=eu')
+                .then(response => response.json())
+                .then(data => {
+                if (data['cod'] == 200){
+                console.log(data['weather'][0]['icon']);
+                console.log("http://openweathermap.org/img/wn/"+data['weather'][0]['icon']+"@2x.png");
+                var img_owm = "http://openweathermap.org/img/wn/"+data['weather'][0]['icon']+"@2x.png";
+                    {% for owm in owms %}
+                        icon_code = data['weather'][0]['icon'];
+                        if (hour > 21 || hour < 6){
+                            icon_code = icon_code.replace("d", "n");
+                        }
+                    {% endfor %}
+                    var weatherIcon = new LeafIconWeather({iconUrl: img_owm});
+                    markersWeather.addLayer(L.marker([{{ spot.start_latitude }},{{ spot.start_longitude }}], {icon: weatherIcon}));
+                }
+                })
+            })
+        {% endfor %}
+
+        {% for spot in bikespot %}
+            window.addEventListener('load', function(name){
+                fetch('https://api.openweathermap.org/data/2.5/weather?lat={{ spot.end_latitude }}&&lon={{ spot.end_longitude }}&units=metric&appid=32ce3717017406682b290a5dd99fbc99&lang=eu')
+                .then(response => response.json())
+                .then(data => {
+                if (data['cod'] == 200){
+                console.log(data['weather'][0]['icon']);
+                console.log("http://openweathermap.org/img/wn/"+data['weather'][0]['icon']+"@2x.png");
+                var img_owm = "http://openweathermap.org/img/wn/"+data['weather'][0]['icon']+"@2x.png";
+                    {% for owm in owms %}
+                        icon_code = data['weather'][0]['icon'];
+                        if (hour > 21 || hour < 6){
+                            icon_code = icon_code.replace("d", "n");
+                        }
+                    {% endfor %}
+                    var weatherIcon = new LeafIconWeather({iconUrl: img_owm});
+                    markersWeather.addLayer(L.marker([{{ spot.end_latitude }},{{ spot.end_longitude }}], {icon: weatherIcon}));
+                }
+                })
+            })
+        {% endfor %}
+
+        map.addLayer(markersWeather);
+
+        var overlayMaps = {
+            "Eguraldia": markersWeather,
+        };
+
+        L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
+
+        L.control.locate({
+            flyTo: true,
+            keepCurrentZoomLevel: true,
+            initialZoomLevel: 10
+            }).addTo(map);
+
+        map.on('mouseover', function ()
+        {
+            console.log('your mouse is over the map')
+        })
+
+</script>
+<!--Jquery -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+<!-- Owl Carousel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
+<!-- custom JS code after importing jquery and owl -->
+<script type="text/javascript">
+ $(document).ready(function(){
+  $('.owl-carousel').owlCarousel({
+    loop:true,
+    margin:10,
+    nav:true,
+    autoplay: true,
+    center:true,
+    items: 1,
+    onInitialize: function (event) {
+        if ($('.owl-carousel .item').length <= 1) {
+           this.settings.loop = false;
+        }
+    },
+    responsive: {
+            0: {
+                items: 1
+            },
+            600: {
+                items: 2
+            },
+            1000: {
+                items: 3
+            }
+        },
+  })
+});
+
+</script>
+{% endblock %}
+
+

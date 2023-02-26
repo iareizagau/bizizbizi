@@ -1,0 +1,8 @@
+Django
+django-ckeditor
+django-js-asset
+Pillow
+pylint
+pylint-django
+pylint-plugin-utils
+
