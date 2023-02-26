@@ -235,15 +235,15 @@ ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 7  # dias para verificar email
 ACCOUNT_LOGOUT_ON_GET = True
 
 # Provider specific settings
-# SOCIALACCOUNT_PROVIDERS = {
-#     'google': {
-#         # For each OAuth based provider, either add a ``SocialApp``
-#         # (``socialaccount`` app) containing the required client
-#         # credentials, or list them here:
-#         'APP': {
-#             'client_id': '33531252717-bl6lf4a5ujqmhr3771pberiuelpja69s.apps.googleusercontent.com',
-#             'secret': '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',
-#             'key': ''
-#         }
-#     }
-# }
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        # For each OAuth based provider, either add a ``SocialApp``
+        # (``socialaccount`` app) containing the required client
+        # credentials, or list them here:
+        'APP': {
+            'client_id': '33531252717-bl6lf4a5ujqmhr3771pberiuelpja69s.apps.googleusercontent.com',
+            'secret': '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',
+            'key': ''
+        }
+    }
+}
