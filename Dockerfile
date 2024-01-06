@@ -23,7 +23,7 @@ COPY requirements.txt $APP_HOME/
 RUN pip install --upgrade pip
 
 RUN pip install -r requirements.txt
-COPY . /eskalatzen/
+COPY . /bizizbizi/
 
 
 # Changing ownership of all files and folders in work dir to user
