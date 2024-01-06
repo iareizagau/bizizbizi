@@ -33,4 +33,3 @@ RUN chown -R dockeruser:dockeruser $APP_HOME
 USER dockeruser
 
 CMD ["python", "bizizbizi/manage.py", "runserver", "0.0.0.0:8000"]
-
