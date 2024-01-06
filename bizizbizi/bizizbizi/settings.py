@@ -9,9 +9,10 @@ https://docs.djangoproject.com/en/4.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
-
+import os
 from pathlib import Path
 from datetime import timedelta
+from google.oauth2 import service_account
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -96,10 +97,18 @@ WSGI_APPLICATION = 'bizizbizi.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
+# GS_CREDENTIALS = service_account.Credentials.from_service_account_file(os.getenv('CLOUD_RUN_CERT'))
+# GS_BUCKET_NAME = 'bizizbizi'
+# DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+# GS_PROJECT_ID = 'optimum-shore-409919'
+# GS_LOCATION = 'us-east1'
+
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        #'NAME': 'gs://bizizbizi/db/db.sqlite3'
     }
 }
 
@@ -247,3 +256,4 @@ SOCIALACCOUNT_PROVIDERS = {
         }
     }
 }
+
